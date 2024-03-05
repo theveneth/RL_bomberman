@@ -8,6 +8,7 @@ class Maze:
     def __init__(self, size_x,size_y): #real size is 5*size_x + 2, 3*size_y + 2
         # Initialize maze attributes and methods here
         
+        #MAZE LAYOUT
         maze_layout = [
             ''.join(['#'] + ['    #']*size_x + ['#']),
             ''.join(['#'] + ['  #  ']*size_x + ['#']),
