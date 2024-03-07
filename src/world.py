@@ -160,6 +160,7 @@ class Bomberman():
             #####
             #DISPLAY
             #####
+            
             #Of course, the maze doesn't change -> let's display it
             self.display_maze()
 
