@@ -1,9 +1,9 @@
 import numpy as np
 
 class NaiveAgent:
-    def __init__(self, num_actions):
+    def __init__(self, num_actions=5, epsilon = 0.1):
         self.num_actions = num_actions
-
+        self.epsilon = epsilon
         # Initialize Q-table with zeros
         self.q_table = np.zeros(num_actions)
 
