@@ -1,9 +1,8 @@
 from new_world import Bomberman
 import pickle
 #open pickle
-with open('pickles/qtable_1000_episodes.pkl', 'rb') as f:
+with open('pickles/qtable_100000_episodes.pkl', 'rb') as f:
     data = pickle.load(f)
-
 
 args = {
         'display' : True,

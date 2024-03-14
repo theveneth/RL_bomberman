@@ -284,8 +284,8 @@ class Bomberman():
                     killed_agents.append(agent['agent_id'])
                     next_state["data_agents"][i]['alive'] = False
         #debug
-        if killed_agents != []:
-            print('killed_agents : ', killed_agents)
+        # if killed_agents != []:
+        #     print('killed_agents : ', killed_agents)
         return killed_agents, next_state
 
     def get_brick_zones(self):
@@ -500,7 +500,7 @@ class Bomberman():
 
             #check if the game is over
             if done:
-                print(rewards)
+                #print(rewards)
                 self.winner = self.get_winner()
                 self.running = False
         

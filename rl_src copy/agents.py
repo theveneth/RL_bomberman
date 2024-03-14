@@ -91,7 +91,7 @@ class QLearningAgent:
         #simple obs : closest enemy, closest bomb
         encoded_state = np.array([])
         # Local grid
-        #encoded_state = np.append(encoded_state, observation['local_grid'])
+        encoded_state = np.append(encoded_state, observation['local_grid'])
         # Closest enemy distance
         encoded_state = np.append(encoded_state, np.round(observation['closest_enemy_distance']))
 
@@ -101,7 +101,7 @@ class QLearningAgent:
         # encoded_state = np.append(encoded_state, observation['bomb_timers'])
         # Explosion timers
         # encoded_state = np.append(encoded_state, observation['explosion_timers'])
-        # Bombs available
-        # encoded_state = np.append(encoded_state, observation['bombs_available'])
+        #Bombs available
+        encoded_state = np.append(encoded_state, observation['bombs_available'])
 
         return tuple(encoded_state)
