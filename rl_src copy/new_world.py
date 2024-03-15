@@ -2,14 +2,13 @@ import pygame
 import os
 import random
 import time
-from agents import NaiveAgent, QLearningAgent, RandomAgent
+from agents import NaiveAgent, QLearningAgent, RandomAgent, MonteCarloAgent
 from utils import load_image
 import numpy as np
 
 class Bomberman():
 
     def __init__(self, display = True, maze_size = (3,5), nb_bombs = [1], type_agents = ["naive"], init_data_agents = [None], bombing_range = 3, diag_bombing_range = 2, bomb_time = 3000, explosion_time = 1000, agent_move_time = 300):
-        
         self.nb_agents = len(type_agents)
         self.nb_bombs = nb_bombs
         self.bombing_range = bombing_range
@@ -42,7 +41,7 @@ class Bomberman():
 
         #AGENT STATE DATA
         for type_agent in type_agents:
-            assert type_agent in ["naive", "qlearning", "random"]
+            assert type_agent in ["naive", "qlearning", "random", "montecarlo"]
         assert self.nb_agents < 5 and self.nb_agents > 0
 
         colors = ["_blue", "_green", "_pink", "_yellow"]
@@ -101,6 +100,8 @@ class Bomberman():
                 self.AGENTS.append(QLearningAgent(data_to_init = data_to_init))
             elif ag == "random":
                 self.AGENTS.append(RandomAgent())
+            elif ag == "montecarlo":
+                self.AGENTS.append(MonteCarloAgent(data_to_init = data_to_init))
 
         
         #Start game directly
@@ -272,7 +273,6 @@ class Bomberman():
                     next_state["data_agents"][i]["bombs_available"] += 1
         return next_state
 
-     
     def get_kill_zone(self):
         return [zone for dictionnaire in self.data_explosions for zone in dictionnaire['explosion_zone']]
     
@@ -335,25 +335,60 @@ class Bomberman():
                 if self.is_action_possible(agent, actions[i]):
                     if actions[i] == 0:
                         agent['agent_x'] -= 1
-                        rewards[i] += 1
                     elif actions[i] == 1:
                         agent['agent_x'] += 1
-                        rewards[i] += 1
                     elif actions[i] == 2:
                         agent['agent_y'] -= 1
-                        rewards[i] += 1
                     elif actions[i] == 3:
                         agent['agent_y'] += 1
-                        rewards[i] += 1
                     elif actions[i] == 4:
                         if agent["bombs_available"]>=1:
                             next_state = self.drop_bomb(next_state, agent_id = agent["agent_id"],x=agent["agent_x"], y = agent["agent_y"])
                             next_state["data_agents"][i]["bombs_available"]-=1
                             rewards[i] += 10
+                            #calculate the distance from the bomb to the enemy
+                            for j,other_agent in enumerate(next_state['data_agents']):
+                                if other_agent['agent_id'] != agent['agent_id'] and other_agent['alive']:
+                                    dist = abs(other_agent['agent_x'] - agent['agent_x']) + abs(other_agent['agent_y'] - agent['agent_y'])
+                                    if dist < 5:
+                                        rewards[i] += 500
+                                    
+
+
                 else :
                     rewards[i] = -10
                 
+         
+        # get Closest enemy distance and give rewards to those who are going for the enemy
+        for i, ag in enumerate(next_state['data_agents']):
+            obs = self.get_observation(i, state = next_state)
+            past_obs = self.get_observation(i, state = self.STATE)
+            
+            closest_enemy_distance = past_obs['closest_enemy_distance']
+            new_closest_enemy_distance = obs['closest_enemy_distance']
+            
+            if new_closest_enemy_distance < 4:
+                rewards[i] += 100
+            else:
+                rewards[i] -= 1
 
+            if new_closest_enemy_distance < closest_enemy_distance:
+                rewards[i] += 10
+
+
+            
+            new_closest_bomb_distance = obs['closest_bomb_distance']
+
+            if new_closest_bomb_distance < 3:
+                rewards[i] -= 500
+            
+            new_closest_explosion_distance = obs['closest_explosion_distance']
+
+            if new_closest_explosion_distance < 3:
+                rewards[i] -= 500
+
+
+            
         #update the bombs -> explode & delete bomb if needed
         next_state = self.update_bombs(next_state = next_state, maze_layout=self.data_maze,bomb_time=self.bomb_time)
                         
@@ -361,7 +396,7 @@ class Bomberman():
         next_state = self.update_explosions(next_state = next_state, explosion_time=self.explosion_time)
 
         #check if an agent has been killed and update the state, give a reward to the killer
-        for explosion in self.STATE["data_explosions"]:
+        for explosion in next_state["data_explosions"].copy():
             expl_zone = explosion["explosion_zone"]
             agent_dropper = explosion["agent_id"]
             killed_agents, next_state = self.get_killed_agents(next_state, killing_zone=expl_zone)
@@ -369,7 +404,7 @@ class Bomberman():
             rewards_id = {"blue":0,"green":1,"pink":2,"yellow":3}
             reward_id = rewards_id[agent_dropper]
             if agent_dropper not in killed_agents:
-                rewards[reward_id] = 10 * len(killed_agents)
+                rewards[reward_id] = 100 * len(killed_agents)
 
         #check if the game is over
         alive_agents = [agent['alive'] for agent in next_state['data_agents']]
@@ -384,7 +419,9 @@ class Bomberman():
         #attributing bad if dead 
         for i, agent in enumerate(next_state['data_agents']):
             if not agent['alive']:
-                rewards[i]-=1000
+                rewards[i]-=500
+            else: 
+                rewards[i]+=10
            
         
         return rewards, next_state, done 
@@ -395,7 +432,7 @@ class Bomberman():
 
         #AGENT POSITION AND SELF AWARNESS
         agent_x, agent_y = agent['agent_x'], agent['agent_y']
-        grid_size = 5  #local grid size (e.g., 5x5, 7x7, etc.)
+        grid_size = 3  #local grid size (e.g., 5x5, 7x7, etc.)
         half_grid_size = grid_size // 2
         # Local grid
         local_grid = [[' ' for _ in range(grid_size)] for _ in range(grid_size)]
@@ -431,6 +468,16 @@ class Bomberman():
             for ex, ey in explosion['explosion_zone']:
                 if abs(ex - agent_x) <= half_grid_size and abs(ey - agent_y) <= half_grid_size:
                     explosion_timers.append(explosion['explosion_time'])
+        #closest 
+        closest_explosion_distance = float('inf')
+        for explosion in state['data_explosions']:
+            explosion_x = explosion['explosion_zone'][0][0]
+            explosion_y = explosion['explosion_zone'][0][1]
+            dist = abs(explosion_x - agent_x) + abs(explosion_y - agent_y)
+            closest_explosion_distance = min(closest_explosion_distance, dist)
+        
+
+
 
         observation = {
             'local_grid': local_grid,
@@ -438,11 +485,11 @@ class Bomberman():
             'closest_bomb_distance': closest_bomb_distance,
             'bomb_timers': bomb_timers,
             'explosion_timers': explosion_timers,
-            'bombs_available': agent['bombs_available']
+            'bombs_available': agent['bombs_available'],
+            'closest_explosion_distance': closest_explosion_distance
         }
 
         return observation
-
 
     def get_winner(self):
         alive_agents = [agent['alive'] for agent in self.STATE['data_agents']]
@@ -478,7 +525,7 @@ class Bomberman():
                 #Given the complexity of the state space, we  want to simplify it so that the agent can learn effectively
 
                 obs_agent = self.get_observation(i, state = self.STATE)
-                
+                #print(obs_agent)
                 # Select an action based on the current state and the agent's policy
                 action = agent.act(obs_agent)
                 actions.append(action)
@@ -508,7 +555,7 @@ class Bomberman():
                    
         data_to_save = []
         for agent in self.AGENTS:
-            if isinstance(agent, QLearningAgent): #only qlearning for now
+            if isinstance(agent, (QLearningAgent,MonteCarloAgent)): #only qlearning for now
                 data_to_save.append(agent.q_table)
             else: 
                 data_to_save.append(None)

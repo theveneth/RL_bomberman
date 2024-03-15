@@ -2,9 +2,10 @@ import pickle
 from new_world import Bomberman
 import numpy as np
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 def train(**args):
-    num_episodes = 100000  # Number of episodes to train for
+    num_episodes = 1000  # Number of episodes to train for
     save_qtable = True  # Whether to save the Q-table after training
 
     # List to store the rewards of each agent for tracking performance
@@ -18,26 +19,37 @@ def train(**args):
 
         # Store the rewards of each agent for this episode
         for i, rewards_i in enumerate(rewards):
-            agent_rewards[i].append(rewards_i)
+            agent_rewards[i].append(sum(rewards_i))
 
         args['init_data_agents'] = data_to_save
 
+    #plot the rewards
+    for i, rewards in enumerate(agent_rewards):
+        plt.plot(rewards, label=args['type_agents'][i])
+        #add legend 
         
+    plt.xlabel("Episode")
+    plt.ylabel("Total Reward")
+    plt.title("Total Reward vs Episode for each agent")
+    plt.legend()
+    plt.show()
+
     # Save the Q-table of the QLearningAgent after training
     print(f"Winners: {winners}")
 
     if save_qtable :
         for data in data_to_save :
             if data is not None :
-                with open(f"./pickles/qtable_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
+                with open(f"./pickles/qtable_mcq_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
                     pickle.dump(data, f)
+                    print('saved in : ', f'qtable_mcq_{num_episodes}_episodes.pkl')
 
 if __name__ == "__main__":
     args = {
         'display' : False,
         'maze_size': (2, 2),
         'nb_bombs': [1, 0], #No bomb for the random agent 
-        'type_agents': ['qlearning', 'random'],
+        'type_agents': ['montecarlo', 'random'],
         'bombing_range': 3,
         'diag_bombing_range': 2,
         'bomb_time': 3000,
@@ -50,6 +62,3 @@ if __name__ == "__main__":
     print('Training finished')
 
     
-
-
-#Y'A TJR UN ECRAN NOIR QUAND ON LANCE LE TRAINING, C'EST NORMAL ET DU A PYGAME.
