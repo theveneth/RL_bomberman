@@ -2,7 +2,7 @@ import pygame
 import os
 import random
 import time
-from agents import NaiveAgent, QLearningAgent, RandomAgent, MonteCarloAgent
+from agents import NaiveAgent, QLearningAgent, RandomAgent, MonteCarloAgent, NNAgent, PastAwareMonteCarloAgent
 from utils import load_image
 import numpy as np
 
@@ -41,7 +41,7 @@ class Bomberman():
 
         #AGENT STATE DATA
         for type_agent in type_agents:
-            assert type_agent in ["naive", "qlearning", "random", "montecarlo"]
+            assert type_agent in ["naive", "qlearning", "random", "montecarlo","nn", "pastawaremontecarlo"]
         assert self.nb_agents < 5 and self.nb_agents > 0
 
         colors = ["_blue", "_green", "_pink", "_yellow"]
@@ -102,6 +102,10 @@ class Bomberman():
                 self.AGENTS.append(RandomAgent())
             elif ag == "montecarlo":
                 self.AGENTS.append(MonteCarloAgent(data_to_init = data_to_init))
+            elif ag == "nn":
+                self.AGENTS.append(NNAgent(model_to_init = data_to_init))
+            elif ag == "pastawaremontecarlo":
+                self.AGENTS.append(PastAwareMonteCarloAgent(data_to_init = data_to_init))
 
         
         #Start game directly
@@ -119,8 +123,8 @@ class Bomberman():
         if nb_agents == 2:
             new_data_agents[0]['agent_x'] = 1
             new_data_agents[0]['agent_y'] = 1
-            new_data_agents[1]['agent_x'] = maze_real_size[0] - 2
-            new_data_agents[1]['agent_y'] = maze_real_size[1] - 2
+            new_data_agents[1]['agent_x'] = 5
+            new_data_agents[1]['agent_y'] = 5
 
         if nb_agents == 3:
             new_data_agents[0]['agent_x'] = 1
@@ -345,14 +349,14 @@ class Bomberman():
                         if agent["bombs_available"]>=1:
                             next_state = self.drop_bomb(next_state, agent_id = agent["agent_id"],x=agent["agent_x"], y = agent["agent_y"])
                             next_state["data_agents"][i]["bombs_available"]-=1
-                            rewards[i] += 10
                             #calculate the distance from the bomb to the enemy
                             for j,other_agent in enumerate(next_state['data_agents']):
                                 if other_agent['agent_id'] != agent['agent_id'] and other_agent['alive']:
                                     dist = abs(other_agent['agent_x'] - agent['agent_x']) + abs(other_agent['agent_y'] - agent['agent_y'])
-                                    if dist < 5:
-                                        rewards[i] += 500
-                                    
+                                    if dist < 3:
+                                        rewards[i] += 600
+                                    else: 
+                                        rewards[i] -= 80
 
 
                 else :
@@ -367,25 +371,16 @@ class Bomberman():
             closest_enemy_distance = past_obs['closest_enemy_distance']
             new_closest_enemy_distance = obs['closest_enemy_distance']
             
-            if new_closest_enemy_distance < 4:
-                rewards[i] += 100
-            else:
-                rewards[i] -= 1
-
-            if new_closest_enemy_distance < closest_enemy_distance:
-                rewards[i] += 10
-
-
+            rewards[i] += (10-new_closest_enemy_distance)*10
             
-            new_closest_bomb_distance = obs['closest_bomb_distance']
 
+            new_closest_bomb_distance = obs['closest_bomb_distance']
             if new_closest_bomb_distance < 3:
-                rewards[i] -= 500
+                rewards[i] -= 100
             
             new_closest_explosion_distance = obs['closest_explosion_distance']
-
             if new_closest_explosion_distance < 3:
-                rewards[i] -= 500
+                rewards[i] -= 100
 
 
             
@@ -411,15 +406,15 @@ class Bomberman():
 
         #give reward to the last agent alive
         if np.sum(alive_agents)<=1:
-            if np.sum(alive_agents)==1:
-                i = alive_agents.index(1)
-                rewards[i]+=1000
+        #     if np.sum(alive_agents)==1:
+        #         i = alive_agents.index(1)
+        #         rewards[i]+=1000
             done = True
 
         #attributing bad if dead 
         for i, agent in enumerate(next_state['data_agents']):
             if not agent['alive']:
-                rewards[i]-=500
+                rewards[i]-=1000
             else: 
                 rewards[i]+=10
            
@@ -502,11 +497,6 @@ class Bomberman():
 
         while self.running:
             
-
-            #For manual control
-            # for event in pygame.event.get(): #No usage : agent is random.
-            #     if event.type == pygame.QUIT:
-            #         self.running = False
             
             #display
             if self.display:
@@ -555,8 +545,10 @@ class Bomberman():
                    
         data_to_save = []
         for agent in self.AGENTS:
-            if isinstance(agent, (QLearningAgent,MonteCarloAgent)): #only qlearning for now
+            if isinstance(agent, (QLearningAgent,MonteCarloAgent, PastAwareMonteCarloAgent)): #only qlearning for now
                 data_to_save.append(agent.q_table)
+            elif isinstance(agent, NNAgent):
+                data_to_save.append(agent.model)
             else: 
                 data_to_save.append(None)
             

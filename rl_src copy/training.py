@@ -5,7 +5,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 def train(**args):
-    num_episodes = 1000  # Number of episodes to train for
+    num_episodes = 10000  # Number of episodes to train for
     save_qtable = True  # Whether to save the Q-table after training
 
     # List to store the rewards of each agent for tracking performance
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         'display' : False,
         'maze_size': (2, 2),
         'nb_bombs': [1, 0], #No bomb for the random agent 
-        'type_agents': ['montecarlo', 'random'],
+        'type_agents': ['pastawaremontecarlo', 'random'],
         'bombing_range': 3,
         'diag_bombing_range': 2,
         'bomb_time': 3000,
