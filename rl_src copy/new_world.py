@@ -97,7 +97,11 @@ class Bomberman():
             if ag == "naive":
                 self.AGENTS.append(NaiveAgent())
             elif ag == "qlearning":
-                self.AGENTS.append(QLearningAgent(data_to_init = data_to_init))
+                if display :
+                    print('eps set to 0')
+                    self.AGENTS.append(QLearningAgent(epsilon = 0, data_to_init = data_to_init))
+                else:
+                    self.AGENTS.append(QLearningAgent(data_to_init = data_to_init))
             elif ag == "random":
                 self.AGENTS.append(RandomAgent())
             elif ag == "montecarlo":
@@ -363,10 +367,8 @@ class Bomberman():
                             for j,other_agent in enumerate(next_state['data_agents']):
                                 if other_agent['agent_id'] != agent['agent_id'] and other_agent['alive']:
                                     dist = abs(other_agent['agent_x'] - agent['agent_x']) + abs(other_agent['agent_y'] - agent['agent_y'])
-                                    if dist < 3:
-                                        rewards[i] += 600
-                                    else: 
-                                        rewards[i] -= 100
+                                    rewards[i] = min((5-dist),0)*1000
+                                    
                     elif actions[i] == 5:
                         rewards[i] -= 10
                         pass
@@ -384,12 +386,13 @@ class Bomberman():
             closest_enemy_distance = past_obs['closest_enemy_distance']
             new_closest_enemy_distance = obs['closest_enemy_distance']
             
-            rewards[j] += (closest_enemy_distance-new_closest_enemy_distance)*100
+            if new_closest_enemy_distance>3:
+                rewards[j] += (closest_enemy_distance-new_closest_enemy_distance)*100
 
             new_closest_bomb_distance = obs['closest_bomb_distance']
             closest_bomb_distance = past_obs['closest_bomb_distance']
             #print('new_closest_bomb_distance', new_closest_bomb_distance)
-            rewards[j] += (new_closest_bomb_distance-closest_bomb_distance)*100
+            rewards[j] += (new_closest_bomb_distance-closest_bomb_distance)*1000
                 #s'éloigner
             
 
@@ -415,7 +418,7 @@ class Bomberman():
             rewards_id = {"blue":0,"green":1,"pink":2,"yellow":3}
             reward_id = rewards_id[agent_dropper]
             if agent_dropper not in killed_agents:
-                rewards[reward_id] = 100 * len(killed_agents)
+                rewards[reward_id] = 10000 * len(killed_agents)
 
         #check if the game is over
         alive_agents = [agent['alive'] for agent in next_state['data_agents']]
@@ -436,9 +439,9 @@ class Bomberman():
            
         self.t += 1
         #print(self.t)
-        if self.t >= 200:
+        if self.t >= 300:
             for i in range(len(rewards)):
-                rewards[i] -= 100
+                rewards[i] -= 1000
 
         #print(rewards)
         return rewards, next_state, done 
