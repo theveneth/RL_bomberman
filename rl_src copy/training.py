@@ -5,7 +5,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 def train(**args):
-    num_episodes = 10000  # Number of episodes to train for
+    num_episodes = 100000  # Number of episodes to train for
     save_qtable = True  # Whether to save the Q-table after training
 
     # List to store the rewards of each agent for tracking performance
@@ -16,6 +16,9 @@ def train(**args):
         world = Bomberman(**args)
         winner, rewards, data_to_save = world.run()
         winners.append(winner)
+        if len(winners)>10 and winners[-10:] == ["blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue"]:
+            print('10 consecutive draws, stopping training')
+            break
 
         # Store the rewards of each agent for this episode
         for i, rewards_i in enumerate(rewards):
@@ -40,16 +43,16 @@ def train(**args):
     if save_qtable :
         for data in data_to_save :
             if data is not None :
-                with open(f"./pickles/qtable_mcq_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
+                with open(f"./pickles/qtable_Q_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
                     pickle.dump(data, f)
-                    print('saved in : ', f'qtable_mcq_{num_episodes}_episodes.pkl')
+                    print('saved in : ', f'qtable_Q_{num_episodes}_episodes.pkl')
 
 if __name__ == "__main__":
     args = {
         'display' : False,
         'maze_size': (2, 2),
         'nb_bombs': [1, 0], #No bomb for the random agent 
-        'type_agents': ['pastawaremontecarlo', 'random'],
+        'type_agents': ['qlearning', 'random'],
         'bombing_range': 3,
         'diag_bombing_range': 2,
         'bomb_time': 3000,
