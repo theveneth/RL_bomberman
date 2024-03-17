@@ -230,15 +230,12 @@ class NNAgent:
 
     def act(self, obs):
         if np.random.rand() < self.epsilon:
-            print('random_taken')
             action = np.random.randint(0, self.num_actions)
         else:
             state = torch.tensor(self.encode_state(obs), dtype=torch.float32)
             q_values = self.model(state)
             action = torch.argmax(q_values).item()
-            print('best action taken : ', action)
         #self.epsilon *= self.decay
-        print('action taken : ', action)
         return action
 
     def update_policy(self, obs, action, reward, next_obs, done):

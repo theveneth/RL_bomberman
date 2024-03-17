@@ -16,7 +16,7 @@ def train(**args):
         world = Bomberman(**args)
         winner, rewards, data_to_save = world.run()
         winners.append(winner)
-        if len(winners)>10 and winners[-10:] == ["blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue"]:
+        if len(winners)>20 and winners[-10:] == ["blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue"]:
             print('10 consecutive draws, stopping training')
             break
 
@@ -43,9 +43,9 @@ def train(**args):
     if save_qtable :
         for data in data_to_save :
             if data is not None :
-                with open(f"./pickles/qtable_Q_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
+                with open(f"./pickles/qtable_qlearning_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
                     pickle.dump(data, f)
-                    print('saved in : ', f'qtable_Q_{num_episodes}_episodes.pkl')
+                    print('saved in : ', f'qtable_qlearning_{num_episodes}_episodes.pkl')
 
 if __name__ == "__main__":
     args = {
