@@ -44,7 +44,7 @@ class RandomAgent:
 
 
 class QLearningAgent:
-    def __init__(self, data_to_init = {}, num_actions=6, learning_rate=0.1, discount_factor=0.95, epsilon=0.1):
+    def __init__(self, data_to_init = {}, num_actions=6, learning_rate=0.11, discount_factor=0.95, epsilon=0.1):
         self.num_actions = num_actions
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
@@ -122,7 +122,7 @@ import torch.optim as optim
 from torch.distributions import Categorical
 
 class DQNAgent:
-    def __init__(self, init_data_agents = None, num_actions=6, learning_rate=0.01, gamma=0.95, epsilon=0.1):
+    def __init__(self, init_data_agents = None, num_actions=6, learning_rate=0.001, gamma=0.1, epsilon=0.1):
         self.num_actions = num_actions
         self.learning_rate = learning_rate
         self.gamma = gamma
@@ -142,7 +142,9 @@ class DQNAgent:
     def create_policy_net(self):
 
         return nn.Sequential(
-            nn.Linear(96, 64),
+            nn.Linear(96, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
             nn.ReLU(),
             nn.Linear(64, self.num_actions)
         )
@@ -150,19 +152,17 @@ class DQNAgent:
     def act(self, obs):
         encoded_obs = self.encode_state(obs)
         state = torch.tensor(encoded_obs, dtype=torch.float32).unsqueeze(0).to(self.device)
-
-        # ε-greedy exploration
-        if np.random.rand() < self.epsilon:
-            # Explore: choose a random action
-            action = np.random.randint(self.num_actions)
+        if np.random.rand() < -1.:# self.epsilon:
+            action = np.random.randint(0, self.num_actions)
         else:
-            # Exploit: choose the action with the highest Q-value
             with torch.no_grad():
                 action_probs = self.policy_net(state)
             action = torch.argmax(action_probs).item()
         return action
 
     def update_policy(self, obs, action, reward, next_obs, done):
+        scaled_reward = (reward + 100) / (1000 + 100)
+
         encoded_obs = self.encode_state(obs)
         encoded_next_obs = self.encode_state(next_obs)
 
@@ -172,15 +172,13 @@ class DQNAgent:
         action_probs = self.policy_net(state)
         dist = Categorical(logits=action_probs)
 
-            
-        # Convert action to a tensor
         action_tensor = torch.tensor([action], dtype=torch.long).to(self.device)
         log_prob = dist.log_prob(action_tensor)
 
-
         next_action_probs = self.policy_net(next_state)
-        next_action = torch.argmax(next_action_probs, dim=1)
-        target = reward + (1 - done) * self.gamma * next_action_probs[0, next_action]
+        next_action = torch.argmax(next_action_probs).item()
+
+        target = scaled_reward + (1 - done) * self.gamma * next_action_probs[0, next_action]
 
         loss = -(target - action_probs[0, action]).item() * log_prob
         self.optimizer.zero_grad()

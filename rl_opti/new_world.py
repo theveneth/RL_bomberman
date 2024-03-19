@@ -432,7 +432,7 @@ class Bomberman():
            
         self.t += 1
         
-        if self.t >=300:
+        if self.t >=30:
             #print('too long')
             next_state['data_agents'][0]['alive'] = False
             done = True

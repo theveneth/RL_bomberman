@@ -8,7 +8,7 @@ from agents import QLearningAgent, RandomAgent, DQNAgent
 
                     
 def train(**args):
-    num_episodes = 100000# Number of episodes to train for
+    num_episodes = 1# Number of episodes to train for
     save_qtable = True  # Whether to save the Q-table after training
     data_to_save = None
     to_check = []
@@ -17,12 +17,12 @@ def train(**args):
     agent_rewards = [[] for _ in range(len(args['type_agents']))]
     winners = []
 
-    AGENTS = [QLearningAgent(), RandomAgent()]
+    AGENTS = [DQNAgent(), RandomAgent()]
     args['AGENTS'] = AGENTS
     
     for episode in tqdm(range(num_episodes), desc="Episode"):
         world = Bomberman(**args)
-        to_check.append(len(world.AGENTS[0].q_table.keys()))
+        #to_check.append(len(world.AGENTS[0].q_table.keys()))
 
         winner, rewards, data_to_save = world.run()
         winners.append(winner)
@@ -58,10 +58,10 @@ def train(**args):
     if save_qtable :
         for data in data_to_save :
             if data is not None :
-                path = f"qtable_qlearning_{num_episodes}_episodes.pkl"
+                path = f"qtable_DQN_{num_episodes}_episodes.pkl"
                 with open(f"./pickles/{path}", "wb") as f: #for qlearning only for now
                     pickle.dump(data, f)
-                    print('saved in : ', f'qtable_qlearning_{path}_episodes.pkl')
+                    print('saved in : ', f'qtable_DQN_{path}_episodes.pkl')
 
     print(to_check)
 if __name__ == "__main__":
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         'display' : False,
         'maze_size': (2, 2),
         'nb_bombs': [0, 0], #No bomb for the random agent 
-        'type_agents': ['qlearning', 'random'],
+        'type_agents': ['dqn', 'random'],
         'bombing_range': 3,
         'diag_bombing_range': 2,
         'bomb_time': 3000,
