@@ -5,14 +5,16 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 def train(**args):
-    num_episodes = 10000  # Number of episodes to train for
-    save_qtable = True  # Whether to save the Q-table after training
+    num_episodes = 100  # Number of episodes to train for
+    save_qtable = False  # Whether to save the Q-table after training
 
     # List to store the rewards of each agent for tracking performance
     agent_rewards = [[] for _ in range(len(args['type_agents']))]
     winners = []
 
     for episode in tqdm(range(num_episodes), desc="Episode"):
+        if episode%10==0:
+            print(args["init_data_agents"])
         world = Bomberman(**args)
         winner, rewards, data_to_save = world.run()
         winners.append(winner)
@@ -22,13 +24,13 @@ def train(**args):
 
         # Store the rewards of each agent for this episode
         for i, rewards_i in enumerate(rewards):
-            agent_rewards[i].append(sum(rewards_i))
+            agent_rewards[i].append(np.mean(rewards_i))
 
         args['init_data_agents'] = data_to_save
 
     #plot the rewards
     for i, rewards in enumerate(agent_rewards):
-        plt.plot(rewards, label=args['type_agents'][i])
+            plt.plot(rewards, label=args['type_agents'][i])
         #add legend 
         
     plt.xlabel("Episode")
@@ -52,13 +54,13 @@ if __name__ == "__main__":
         'display' : False,
         'maze_size': (2, 2),
         'nb_bombs': [1, 0], #No bomb for the random agent 
-        'type_agents': ['qlearning', 'random'],
+        'type_agents': ['nn', 'random'],
         'bombing_range': 3,
         'diag_bombing_range': 2,
         'bomb_time': 3000,
         'explosion_time': 1000,
         'agent_move_time': 300,
-        'init_data_agents' : [{},None] #q learning agent data, none for the random agent
+        'init_data_agents' : [None,None] #q learning agent data, none for the random agent
     }
     train(**args)
 

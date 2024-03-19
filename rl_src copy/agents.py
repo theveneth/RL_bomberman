@@ -287,3 +287,89 @@ class NNAgent:
 
     
         return tuple(encoded_maze.flatten())
+
+
+class DQNAgent:
+    def __init__(self, model_to_init=None, num_actions=6, learning_rate=0.01, discount_factor=0.95, epsilon=0.05):
+        input_shape = 96
+        self.num_actions = num_actions
+        self.learning_rate = learning_rate
+        self.discount_factor = discount_factor
+        self.epsilon = epsilon
+
+        self.q_values = None
+        if model_to_init is not None:
+            self.model = model_to_init
+        else:
+            self.model = self.build_model(input_shape)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        self.criterion = nn.MSELoss()
+
+    def build_model(self, input_shape):
+        model = nn.Sequential(
+            nn.Linear(input_shape, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            nn.Linear(64, self.num_actions)
+        )
+        return model
+
+    def act(self, obs):
+        if np.random.rand() < self.epsilon:
+            action = np.random.randint(0, self.num_actions)
+        else:
+            state = torch.tensor(self.encode_state(obs), dtype=torch.float32)
+            q_values = self.model(state)
+            action = torch.argmax(q_values).item()
+        return action
+
+    def update_policy(self, obs, action, reward, next_obs, done):
+        state = torch.tensor(self.encode_state(obs), dtype=torch.float32)
+        next_state = torch.tensor(self.encode_state(next_obs), dtype=torch.float32)
+
+        q_values = self.model(state)
+        next_q_values = self.model(next_state)
+
+        if done:
+            target_q_value = reward
+        else:
+            target_q_value = reward + self.discount_factor * torch.max(next_q_values).item()
+
+        target_q_values = q_values.clone().detach()
+        target_q_values[action] = target_q_value
+
+        self.optimizer.zero_grad()
+        loss = self.criterion(q_values, target_q_values)
+        loss.backward()
+        self.optimizer.step()
+
+    def encode_state(self, observation):
+        maze = observation['full_grid']
+        encoded_maze = np.zeros((len(maze), len(maze[0])))
+        for y, row in enumerate(maze):
+            for x, tile in enumerate(row):
+                if tile == '#':
+                    encoded_maze[y][x] = 1
+                else:
+                    encoded_maze[y][x] = 0
+
+        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
+
+        for bomb in observation['bomb_zones']:
+            if observation['agent_zone'][1] == bomb[1] and observation['agent_zone'][0] == bomb[0]:
+                encoded_maze[bomb[1]][bomb[0]] = 6
+            else:
+                encoded_maze[bomb[1]][bomb[0]] = 4
+
+        for explosion in observation['explosion_zones']:
+            for tile in explosion:
+                if observation['agent_zone'][1] == tile[1] and observation['agent_zone'][0] == tile[0]:
+                    encoded_maze[tile[1]][tile[0]] = 7
+                else:
+                    encoded_maze[tile[1]][tile[0]] = 5
+
+        for enemy in observation['enemy_zones']:
+            encoded_maze[enemy[1]][enemy[0]] = 3
+
+        return tuple(encoded_maze.flatten())
