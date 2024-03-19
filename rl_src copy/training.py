@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 def train(**args):
-    num_episodes = 1000  # Number of episodes to train for
+    num_episodes = 10000  # Number of episodes to train for
     save_qtable = True  # Whether to save the Q-table after training
 
     # List to store the rewards of each agent for tracking performance

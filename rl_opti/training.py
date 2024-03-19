@@ -8,22 +8,26 @@ from agents import QLearningAgent, RandomAgent, DQNAgent
 
                     
 def train(**args):
-    num_episodes = 1000# Number of episodes to train for
+    num_episodes = 100000# Number of episodes to train for
     save_qtable = True  # Whether to save the Q-table after training
+    data_to_save = None
+    to_check = []
 
     # List to store the rewards of each agent for tracking performance
     agent_rewards = [[] for _ in range(len(args['type_agents']))]
     winners = []
 
-    AGENTS = [DQNAgent(), RandomAgent()]
+    AGENTS = [QLearningAgent(), RandomAgent()]
     args['AGENTS'] = AGENTS
     
     for episode in tqdm(range(num_episodes), desc="Episode"):
         world = Bomberman(**args)
+        to_check.append(len(world.AGENTS[0].q_table.keys()))
+
         winner, rewards, data_to_save = world.run()
         winners.append(winner)
         if len(winners)>20 and winners[-15:] == ["blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue"]:
-            print('10 consecutive draws, stopping training')
+            #print('10 consecutive draws, stopping training')
             break
 
         # Store the rewards of each agent for this episode
@@ -49,21 +53,23 @@ def train(**args):
     plt.show()
 
     # Save the Q-table of the QLearningAgent after training
-    print(f"Winners: {winners[-20:]}")
+    #print(f"Winners: {winners[-20:]}")
 
     if save_qtable :
         for data in data_to_save :
             if data is not None :
-                with open(f"./pickles/qtable_DQN_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
+                path = f"qtable_qlearning_{num_episodes}_episodes.pkl"
+                with open(f"./pickles/{path}", "wb") as f: #for qlearning only for now
                     pickle.dump(data, f)
-                    print('saved in : ', f'qtable_DQN_{num_episodes}_episodes.pkl')
+                    print('saved in : ', f'qtable_qlearning_{path}_episodes.pkl')
 
+    print(to_check)
 if __name__ == "__main__":
     args = {
         'display' : False,
         'maze_size': (2, 2),
-        'nb_bombs': [1, 0], #No bomb for the random agent 
-        'type_agents': ['dqn', 'random'],
+        'nb_bombs': [0, 0], #No bomb for the random agent 
+        'type_agents': ['qlearning', 'random'],
         'bombing_range': 3,
         'diag_bombing_range': 2,
         'bomb_time': 3000,
@@ -74,4 +80,4 @@ if __name__ == "__main__":
 
     print('Training finished')
 
-    
+

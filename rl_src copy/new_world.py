@@ -350,6 +350,8 @@ class Bomberman():
         # Store whether the game is over
         done = False
 
+        # Store whether a bomb has been dropped
+        dropped_bomb = [False for i in range(len(self.AGENTS))]
         # Update the position of each agent
         for i, agent in enumerate(next_state['data_agents']):
             if agent['alive']:
@@ -376,14 +378,16 @@ class Bomberman():
                             for j,other_agent in enumerate(next_state['data_agents']):
                                 if other_agent['agent_id'] != agent['agent_id'] and other_agent['alive']:
                                     dist = abs(other_agent['agent_x'] - agent['agent_x']) + abs(other_agent['agent_y'] - agent['agent_y'])
-                                    rewards[i] = max((5-dist),0)*1000
-                                    
+                                    rewards[i] += max((5-dist),0)*1000
+                            
+                            dropped_bomb[i] = True
+                                
                     elif actions[i] == 5:
-                        rewards[i] -= 10
+                        rewards[i] += -10
                         pass
 
                 else :
-                    rewards[i] = -150
+                    rewards[i] += -150
                 
          
         # get Closest enemy distance and give rewards to those who are going for the enemy
@@ -394,19 +398,19 @@ class Bomberman():
             closest_enemy_distance = past_obs['closest_enemy_distance']
             new_closest_enemy_distance = obs['closest_enemy_distance']
             
-            if new_closest_enemy_distance>4:
+            if new_closest_enemy_distance>3 and closest_enemy_distance>3:
                 rewards[j] += (closest_enemy_distance-new_closest_enemy_distance)*100
 
             new_closest_bomb_distance = obs['closest_bomb_distance']
             closest_bomb_distance = past_obs['closest_bomb_distance']
-            if closest_bomb_distance<6:
+            if closest_bomb_distance<5 and dropped_bomb[j]==False:
                 rewards[j] += (new_closest_bomb_distance-closest_bomb_distance)*100
                 #s'éloigner
             
 
             new_closest_explosion_distance = obs['closest_explosion_distance']
             closest_explosion_distance = past_obs['closest_explosion_distance']
-            if closest_explosion_distance<6:
+            if closest_explosion_distance<5:
                 rewards[j] += (new_closest_explosion_distance-closest_explosion_distance)*100
 
 
@@ -427,16 +431,16 @@ class Bomberman():
             rewards_id = {"blue":0,"green":1,"pink":2,"yellow":3}
             reward_id = rewards_id[agent_dropper]
             if agent_dropper not in killed_agents:
-                rewards[reward_id] = 10000 * len(killed_agents)
+                rewards[reward_id] += 10000 * len(killed_agents)
 
         #check if the game is over
         alive_agents = [agent['alive'] for agent in next_state['data_agents']]
 
         #give reward to the last agent alive
         if np.sum(alive_agents)<=1:
-            if np.sum(alive_agents)==1:
-                i = alive_agents.index(1)
-                rewards[i]+=10000
+            # if np.sum(alive_agents)==1:
+            #     i = alive_agents.index(1)
+            #     rewards[i]+=10000
             done = True
 
         #attributing bad if dead 
@@ -451,7 +455,8 @@ class Bomberman():
         if self.t >= 200:
             for i in range(len(rewards)):
                 rewards[i] -= 1000
-        if self.t >=500:
+                
+        if self.t >=400:
             rewards[0] -= 10000
             next_state['data_agents'][0]['alive'] = False
             done = True

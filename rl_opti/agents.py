@@ -36,7 +36,7 @@ class RandomAgent:
        
     def act(self, obs):
         action = np.random.randint(0, self.num_actions)
-        action = 5
+        #action = 5
         return action
 
     def update_policy(self, state, action, reward, next_state, done):
@@ -55,6 +55,7 @@ class QLearningAgent:
 
     def init_q_table(self, encoded_obs):
         # Initialize Q-table with zeros
+        #print('new state ! ')
         self.q_table[encoded_obs] = np.random.rand(self.num_actions)
 
     def act(self, obs):
@@ -80,6 +81,7 @@ class QLearningAgent:
         
         if done:
             td_target = reward
+            #print('at the end, q table has ', len(self.q_table.keys()), ' knwon states')
         else:
             td_target = reward + self.discount_factor * np.max(self.q_table[encoded_next_obs])
 
@@ -97,25 +99,21 @@ class QLearningAgent:
                 else:
                     encoded_maze[y][x] = 0
 
-        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
 
         for bomb in observation['bomb_zones']:
-            if observation['agent_zone'][1] == bomb[1] and  observation['agent_zone'][0] == bomb[0]:
-                encoded_maze[bomb[1]][bomb[0]] = 6
-            else : encoded_maze[bomb[1]][bomb[0]] = 4
+            encoded_maze[bomb[1]][bomb[0]] = 4
 
         for explosion in observation['explosion_zones']:
             for tile in explosion:
-                if observation['agent_zone'][1] == tile[1] and  observation['agent_zone'][0] == tile[0]:
-                    encoded_maze[tile[1]][tile[0]] = 7
-                else : encoded_maze[tile[1]][tile[0]] = 5
+                encoded_maze[tile[1]][tile[0]] = 5
                 
-        
         for enemy in observation['enemy_zones']:
             encoded_maze[enemy[1]][enemy[0]] = 3
 
-    
-        return tuple(encoded_maze.flatten())
+        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
+
+        #print(encoded_maze)
+        return tuple(list(encoded_maze.flatten()))  
     
 
 import torch
@@ -124,7 +122,7 @@ import torch.optim as optim
 from torch.distributions import Categorical
 
 class DQNAgent:
-    def __init__(self, init_data_agents = None, num_actions=6, learning_rate=0.001, gamma=0.95, epsilon=0.1):
+    def __init__(self, init_data_agents = None, num_actions=6, learning_rate=0.01, gamma=0.95, epsilon=0.1):
         self.num_actions = num_actions
         self.learning_rate = learning_rate
         self.gamma = gamma
@@ -199,7 +197,6 @@ class DQNAgent:
                 else:
                     encoded_maze[y][x] = 0
 
-        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
 
         for bomb in observation['bomb_zones']:
             encoded_maze[bomb[1]][bomb[0]] = 4
@@ -211,7 +208,9 @@ class DQNAgent:
         for enemy in observation['enemy_zones']:
             encoded_maze[enemy[1]][enemy[0]] = 3
 
-        
+        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
+
+        #print(encoded_maze)
         return tuple(list(encoded_maze.flatten()))        
 
 

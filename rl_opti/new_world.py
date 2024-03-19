@@ -5,7 +5,7 @@ import time
 from agents import NaiveAgent, QLearningAgent, RandomAgent, MonteCarloAgent, NNAgent, DQNAgent
 from utils import load_image
 import numpy as np
-
+from copy import deepcopy
 class Bomberman():
 
     def __init__(self, AGENTS = [RandomAgent()], display = True, maze_size = (3,5), nb_bombs = [1], type_agents = ["naive"], bombing_range = 3, diag_bombing_range = 2, bomb_time = 3000, explosion_time = 1000, agent_move_time = 300):
@@ -96,6 +96,7 @@ class Bomberman():
         #INIT AGENTS
         ###########################
         #let's take 4 agents for now
+        #print(AGENTS)
         self.AGENTS = AGENTS
 
             
@@ -103,7 +104,7 @@ class Bomberman():
         self.running = True
 
     def init_pos_agents(self, data_agents, maze_real_size):
-        new_data_agents = data_agents.copy()
+        new_data_agents = deepcopy(data_agents)
         nb_agents = len(new_data_agents)
     
         #Init position of agents
@@ -317,18 +318,17 @@ class Bomberman():
         rewards = [0 for i in range(len(self.AGENTS))]
 
         # Store the next state
-        next_state = self.STATE.copy()
+        next_state = deepcopy(self.STATE)
 
         # Store whether the game is over
         done = False
 
         # Store whether a bomb has been dropped
         dropped_bomb = [False for i in range(len(self.AGENTS))]
+
         # Update the position of each agent
         for i, agent in enumerate(next_state['data_agents']):
             if agent['alive']:
-                # if i==0:
-                #     print('agent', i, 'action', actions[i], 'possible', self.is_action_possible(agent, actions[i]))
                 if self.is_action_possible(agent, actions[i]):
                     if actions[i] == 0:
                         agent['agent_x'] -= 1
@@ -354,7 +354,7 @@ class Bomberman():
                                 
                     elif actions[i] == 5:
                         #no reward
-                        rewards[i] -= 300
+                        #rewards[i] -= 300
                         pass
 
                 else :
@@ -370,15 +370,18 @@ class Bomberman():
             
             closest_enemy_distance = past_obs['closest_enemy_distance']
             new_closest_enemy_distance = obs['closest_enemy_distance']
-
+            #print('new_closest_enemy_distance', new_closest_enemy_distance)
             #max pour éviter qu'il ne tourne en rond
             rewards[j] += max(10-new_closest_enemy_distance,0)*100
+            #éviter qu'il ne s'eloigne
+            rewards[j] += (closest_enemy_distance-new_closest_enemy_distance)*300
 
+            #print('rewards', max(10-new_closest_enemy_distance,0)*100)
             new_closest_bomb_distance = obs['closest_bomb_distance']
             closest_bomb_distance = past_obs['closest_bomb_distance']
             if closest_bomb_distance<5 and dropped_bomb[j]==False:
                 #max pour éviter qu'il ne tourne en rond
-                rewards[j] += max(new_closest_bomb_distance,5)*100
+                rewards[j] += (new_closest_bomb_distance-closest_bomb_distance)*800
                 #s'éloigner
             
 
@@ -386,7 +389,7 @@ class Bomberman():
             closest_explosion_distance = past_obs['closest_explosion_distance']
             if closest_explosion_distance<5:
                 #max pour éviter qu'il ne tourne en rond
-                rewards[j] += max(new_closest_explosion_distance,5)*100
+                rewards[j] +=  (new_closest_explosion_distance-closest_explosion_distance)*100
 
 
         #update the bombs -> explode & delete bomb if needed
@@ -396,7 +399,7 @@ class Bomberman():
         next_state = self.update_explosions(next_state = next_state, explosion_time=self.explosion_time)
 
         #check if an agent has been killed and update the state, give a reward to the killer
-        for explosion in next_state["data_explosions"].copy():
+        for explosion in deepcopy(next_state["data_explosions"]):
             expl_zone = explosion["explosion_zone"]
             agent_dropper = explosion["agent_id"]
             killed_agents, next_state = self.get_killed_agents(next_state, killing_zone=expl_zone)
@@ -424,16 +427,16 @@ class Bomberman():
                 rewards[i] -= 1000
                 pass
             else: 
-                rewards[i]-=50
+                pass
+                #rewards[i]-=50
            
         self.t += 1
         
-        if self.t >=400:
-            print('too long')
+        if self.t >=300:
+            #print('too long')
             next_state['data_agents'][0]['alive'] = False
             done = True
 
-        #print(rewards)
         return rewards, next_state, done 
 
     def get_observation(self, i, state):
@@ -538,6 +541,7 @@ class Bomberman():
 
                 # Select an action based on the current state and the agent's policy
                 action = agent.act(obs_agent)
+
                 actions.append(action)
 
             # Execute the actions of all agents and update the environment
@@ -553,7 +557,7 @@ class Bomberman():
                 agent.update_policy(obs_agent, actions[i], rewards[i], next_obs_agent, done)
 
             # Set the current state to the new state for the next iteration
-            self.STATE = next_state.copy()
+            self.STATE = deepcopy(next_state)
 
             #check if the game is over
             if done:

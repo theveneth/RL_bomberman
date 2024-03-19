@@ -4,17 +4,18 @@ from agents import QLearningAgent, RandomAgent, DQNAgent
 
 
 #open pickle
-with open('pickles/qtable_DQN_21_episodes.pkl', 'rb') as f:
+with open('pickles/qtable_qlearning_100000_episodes.pkl', 'rb') as f:
     data = pickle.load(f)
 
-agents_ = [DQNAgent(init_data_agents = data), RandomAgent()]
+#agents_ = [DQNAgent(init_data_agents = data), RandomAgent()]
+agents_ = [QLearningAgent(data_to_init = data), RandomAgent()]
 
 
 args = {
         'display' : True,
         'maze_size': (2, 2),
-        'nb_bombs': [1, 0], #No bomb for the random agent 
-        'type_agents': ['dqn', 'random'],
+        'nb_bombs': [0, 0], #No bomb for the random agent 
+        'type_agents': ['qlearning', 'random'],
         'bombing_range': 3,
         'diag_bombing_range': 2,
         'bomb_time': 3000,
