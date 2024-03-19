@@ -123,7 +123,7 @@ class Bomberman():
                 else:
                     self.AGENTS.append(NNAgent(model_to_init = data_to_init))
             elif ag == "dqn":
-                self.AGENTS.append(DQNAgent())
+                self.AGENTS.append(DQNAgent(init_data_agents = data_to_init))
                     
             
         #Start game directly
@@ -394,19 +394,20 @@ class Bomberman():
             closest_enemy_distance = past_obs['closest_enemy_distance']
             new_closest_enemy_distance = obs['closest_enemy_distance']
             
-            if new_closest_enemy_distance>3:
+            if new_closest_enemy_distance>4:
                 rewards[j] += (closest_enemy_distance-new_closest_enemy_distance)*100
 
             new_closest_bomb_distance = obs['closest_bomb_distance']
             closest_bomb_distance = past_obs['closest_bomb_distance']
-
-            rewards[j] += (new_closest_bomb_distance-closest_bomb_distance)*100
-            #s'éloigner
+            if closest_bomb_distance<6:
+                rewards[j] += (new_closest_bomb_distance-closest_bomb_distance)*100
+                #s'éloigner
             
 
             new_closest_explosion_distance = obs['closest_explosion_distance']
             closest_explosion_distance = past_obs['closest_explosion_distance']
-            rewards[j] += (new_closest_explosion_distance-closest_explosion_distance)*100
+            if closest_explosion_distance<6:
+                rewards[j] += (new_closest_explosion_distance-closest_explosion_distance)*100
 
 
 
@@ -447,9 +448,13 @@ class Bomberman():
            
         self.t += 1
         #print(self.t)
-        if self.t >= 300:
+        if self.t >= 200:
             for i in range(len(rewards)):
                 rewards[i] -= 1000
+        if self.t >=500:
+            rewards[0] -= 10000
+            next_state['data_agents'][0]['alive'] = False
+            done = True
 
         #print(rewards)
         return rewards, next_state, done 

@@ -124,24 +124,28 @@ import torch.optim as optim
 from torch.distributions import Categorical
 
 class DQNAgent:
-    def __init__(self, init_data = None, num_actions=6, learning_rate=0.001, gamma=0.95, epsilon=0.1):
+    def __init__(self, init_data_agents = None, num_actions=6, learning_rate=0.001, gamma=0.95, epsilon=0.1):
         self.num_actions = num_actions
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.epsilon = epsilon
-        if init_data is not None:
-            self.policy_net = init_data
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        if init_data_agents is not None:
+            self.policy_net = init_data_agents
         else:
             self.policy_net = self.create_policy_net()
+            print("DEVICE : ", self.device)
 
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy_net.to(self.device)
 
     def create_policy_net(self):
 
         return nn.Sequential(
-            nn.Linear(96, 64), # 96 is the size of the encoded state
+            nn.Linear(96, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
             nn.ReLU(),
             nn.Linear(64, self.num_actions)
         )

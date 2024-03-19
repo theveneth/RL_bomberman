@@ -3,14 +3,16 @@ from new_world import Bomberman
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import pandas as pd
 
 def train(**args):
-    num_episodes = 10000  # Number of episodes to train for
+    num_episodes = 1000  # Number of episodes to train for
     save_qtable = True  # Whether to save the Q-table after training
 
     # List to store the rewards of each agent for tracking performance
     agent_rewards = [[] for _ in range(len(args['type_agents']))]
     winners = []
+
 
     for episode in tqdm(range(num_episodes), desc="Episode"):
         world = Bomberman(**args)
@@ -25,11 +27,14 @@ def train(**args):
             agent_rewards[i].append(np.mean(rewards_i))
 
         args['init_data_agents'] = data_to_save
+        #print(args)
 
     #plot the rewards
     for i, rewards in enumerate(agent_rewards):
         if i==0:
-            plt.plot(rewards, label=args['type_agents'][i])
+            rewards_series = pd.Series(rewards)
+            moving_avg = rewards_series.rolling(window=100).mean()
+            plt.plot(moving_avg, label=args['type_agents'][i])
         #add legend 
         
     plt.xlabel("Episode")
