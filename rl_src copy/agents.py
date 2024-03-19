@@ -124,7 +124,7 @@ import torch.optim as optim
 from torch.distributions import Categorical
 
 class DQNAgent:
-    def __init__(self, init_data_agents = None, num_actions=6, learning_rate=0.001, gamma=0.95, epsilon=0.1):
+    def __init__(self, init_data_agents = None, num_actions=6, learning_rate=0.01, gamma=0.99, epsilon=0.1):
         self.num_actions = num_actions
         self.learning_rate = learning_rate
         self.gamma = gamma
@@ -144,6 +144,10 @@ class DQNAgent:
 
         return nn.Sequential(
             nn.Linear(96, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
             nn.ReLU(),
             nn.Linear(64, 64),
             nn.ReLU(),

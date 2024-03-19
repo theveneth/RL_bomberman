@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import pandas as pd
+import time 
 
 def train(**args):
     num_episodes = 1000  # Number of episodes to train for
@@ -15,6 +16,8 @@ def train(**args):
 
 
     for episode in tqdm(range(num_episodes), desc="Episode"):
+
+
         world = Bomberman(**args)
         winner, rewards, data_to_save = world.run()
         winners.append(winner)
@@ -25,6 +28,8 @@ def train(**args):
         # Store the rewards of each agent for this episode
         for i, rewards_i in enumerate(rewards):
             agent_rewards[i].append(np.mean(rewards_i))
+            if episode%10==0:
+                print(np.mean(rewards_i))
 
         args['init_data_agents'] = data_to_save
         #print(args)

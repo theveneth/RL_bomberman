@@ -339,8 +339,6 @@ class Bomberman():
         return (x,y) not in self.walls
         
     def perform_actions(self, actions, display = True): 
-        
-
         # Store the rewards for each agent
         rewards = [0 for i in range(len(self.AGENTS))]
 
@@ -447,7 +445,6 @@ class Bomberman():
                 rewards[i]+=10
            
         self.t += 1
-        #print(self.t)
         if self.t >= 200:
             for i in range(len(rewards)):
                 rewards[i] -= 1000
@@ -576,7 +573,7 @@ class Bomberman():
                 self.screen.fill((0, 0, 0))  # Fill screen with black color
                 self.display_all()
                 pygame.display.flip()
-                time.sleep(0.1)
+                time.sleep(1)
 
 
             # Store the actions taken by all agents
