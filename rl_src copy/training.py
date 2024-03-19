@@ -22,13 +22,14 @@ def train(**args):
 
         # Store the rewards of each agent for this episode
         for i, rewards_i in enumerate(rewards):
-            agent_rewards[i].append(sum(rewards_i))
+            agent_rewards[i].append(np.mean(rewards_i))
 
         args['init_data_agents'] = data_to_save
 
     #plot the rewards
     for i, rewards in enumerate(agent_rewards):
-        plt.plot(rewards, label=args['type_agents'][i])
+        if i==0:
+            plt.plot(rewards, label=args['type_agents'][i])
         #add legend 
         
     plt.xlabel("Episode")
@@ -43,22 +44,22 @@ def train(**args):
     if save_qtable :
         for data in data_to_save :
             if data is not None :
-                with open(f"./pickles/qtable_qlearning_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
+                with open(f"./pickles/qtable_DQN_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
                     pickle.dump(data, f)
-                    print('saved in : ', f'qtable_qlearning_{num_episodes}_episodes.pkl')
+                    print('saved in : ', f'qtable_DQN_{num_episodes}_episodes.pkl')
 
 if __name__ == "__main__":
     args = {
         'display' : False,
         'maze_size': (2, 2),
         'nb_bombs': [1, 0], #No bomb for the random agent 
-        'type_agents': ['qlearning', 'random'],
+        'type_agents': ['dqn', 'random'],
         'bombing_range': 3,
         'diag_bombing_range': 2,
         'bomb_time': 3000,
         'explosion_time': 1000,
         'agent_move_time': 300,
-        'init_data_agents' : [{},None] #q learning agent data, none for the random agent
+        'init_data_agents' : [None,None] #q learning agent data, none for the random agent
     }
     train(**args)
 

@@ -2,7 +2,7 @@ import pygame
 import os
 import random
 import time
-from agents import NaiveAgent, QLearningAgent, RandomAgent, MonteCarloAgent, NNAgent
+from agents import NaiveAgent, QLearningAgent, RandomAgent, MonteCarloAgent, NNAgent, DQNAgent
 from utils import load_image
 import numpy as np
 
@@ -41,7 +41,7 @@ class Bomberman():
 
         #AGENT STATE DATA
         for type_agent in type_agents:
-            assert type_agent in ["naive", "qlearning", "random", "montecarlo","nn", "pastawaremontecarlo"]
+            assert type_agent in ["naive", "qlearning", "random", "montecarlo","nn", "pastawaremontecarlo", "dqn"]
         assert self.nb_agents < 5 and self.nb_agents > 0
 
         colors = ["_blue", "_green", "_pink", "_yellow"]
@@ -59,11 +59,17 @@ class Bomberman():
         data_agents = self.init_pos_agents(data_agents, real_maze_size)
 
 
+        # maze_layout = [
+        #     ''.join(['#'] + ['    #']*size_x + ['#']),
+        #     ''.join(['#'] + ['  #  ']*size_x + ['#']),
+        #     ''.join(['#'] + ['#    ']*size_x + ['#']),
+        # ] * size_y
         maze_layout = [
-            ''.join(['#'] + ['    #']*size_x + ['#']),
-            ''.join(['#'] + ['  #  ']*size_x + ['#']),
-            ''.join(['#'] + ['#    ']*size_x + ['#']),
+            ''.join(['#'] + ['     ']*size_x + ['#']),
+            ''.join(['#'] + ['     ']*size_x + ['#']),
+            ''.join(['#'] + ['     ']*size_x + ['#']),
         ] * size_y
+        
         self.data_maze = [''.join(['#']* len(maze_layout[0]))] + maze_layout + [''.join(['#']* len(maze_layout[0]))]
         self.walls = self.get_brick_zones()
         #INIT EXPLOSION DATA
@@ -116,6 +122,9 @@ class Bomberman():
                     self.AGENTS.append(NNAgent(epsilon = 0, model_to_init = data_to_init))
                 else:
                     self.AGENTS.append(NNAgent(model_to_init = data_to_init))
+            elif ag == "dqn":
+                self.AGENTS.append(DQNAgent())
+                    
             
         #Start game directly
         self.running = True
@@ -367,15 +376,14 @@ class Bomberman():
                             for j,other_agent in enumerate(next_state['data_agents']):
                                 if other_agent['agent_id'] != agent['agent_id'] and other_agent['alive']:
                                     dist = abs(other_agent['agent_x'] - agent['agent_x']) + abs(other_agent['agent_y'] - agent['agent_y'])
-                                    rewards[i] = min((5-dist),0)*1000
+                                    rewards[i] = max((5-dist),0)*1000
                                     
                     elif actions[i] == 5:
                         rewards[i] -= 10
                         pass
 
                 else :
-                    #print('bad reward')
-                    rewards[i] = -1500
+                    rewards[i] = -150
                 
          
         # get Closest enemy distance and give rewards to those who are going for the enemy
@@ -391,9 +399,9 @@ class Bomberman():
 
             new_closest_bomb_distance = obs['closest_bomb_distance']
             closest_bomb_distance = past_obs['closest_bomb_distance']
-            #print('new_closest_bomb_distance', new_closest_bomb_distance)
-            rewards[j] += (new_closest_bomb_distance-closest_bomb_distance)*1000
-                #s'éloigner
+
+            rewards[j] += (new_closest_bomb_distance-closest_bomb_distance)*100
+            #s'éloigner
             
 
             new_closest_explosion_distance = obs['closest_explosion_distance']
@@ -425,9 +433,9 @@ class Bomberman():
 
         #give reward to the last agent alive
         if np.sum(alive_agents)<=1:
-        #     if np.sum(alive_agents)==1:
-        #         i = alive_agents.index(1)
-        #         rewards[i]+=1000
+            if np.sum(alive_agents)==1:
+                i = alive_agents.index(1)
+                rewards[i]+=10000
             done = True
 
         #attributing bad if dead 
@@ -608,6 +616,8 @@ class Bomberman():
                 data_to_save.append(agent.q_table)
             elif isinstance(agent, (NNAgent)):
                 data_to_save.append(agent.model)
+            elif isinstance(agent, (DQNAgent)):
+                data_to_save.append(agent.policy_net)
             else: 
                 data_to_save.append(None)
             

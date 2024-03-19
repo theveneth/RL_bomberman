@@ -36,7 +36,7 @@ class RandomAgent:
        
     def act(self, obs):
         action = np.random.randint(0, self.num_actions)
-        action = 5
+        #action = 5
         return action
 
     def update_policy(self, state, action, reward, next_state, done):
@@ -117,6 +117,101 @@ class QLearningAgent:
     
         return tuple(encoded_maze.flatten())
     
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.distributions import Categorical
+
+class DQNAgent:
+    def __init__(self, init_data = None, num_actions=6, learning_rate=0.001, gamma=0.95, epsilon=0.1):
+        self.num_actions = num_actions
+        self.learning_rate = learning_rate
+        self.gamma = gamma
+        self.epsilon = epsilon
+        if init_data is not None:
+            self.policy_net = init_data
+        else:
+            self.policy_net = self.create_policy_net()
+
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.policy_net.to(self.device)
+
+    def create_policy_net(self):
+
+        return nn.Sequential(
+            nn.Linear(96, 64), # 96 is the size of the encoded state
+            nn.ReLU(),
+            nn.Linear(64, self.num_actions)
+        )
+
+    def act(self, obs):
+        encoded_obs = self.encode_state(obs)
+        state = torch.tensor(encoded_obs, dtype=torch.float32).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            action_probs = self.policy_net(state)
+        dist = Categorical(logits=action_probs)
+        action = dist.sample()
+        return action.item()
+
+    def update_policy(self, obs, action, reward, next_obs, done):
+        encoded_obs = self.encode_state(obs)
+        encoded_next_obs = self.encode_state(next_obs)
+
+        state = torch.tensor(encoded_obs, dtype=torch.float32).unsqueeze(0).to(self.device)
+        next_state = torch.tensor(encoded_next_obs, dtype=torch.float32).unsqueeze(0).to(self.device)
+
+        action_probs = self.policy_net(state)
+        dist = Categorical(logits=action_probs)
+
+            
+        # Convert action to a tensor
+        action_tensor = torch.tensor([action], dtype=torch.long).to(self.device)
+        log_prob = dist.log_prob(action_tensor)
+
+
+        next_action_probs = self.policy_net(next_state)
+        next_action = torch.argmax(next_action_probs, dim=1)
+        target = reward + (1 - done) * self.gamma * next_action_probs[0, next_action]
+
+        loss = -(target - action_probs[0, action]).item() * log_prob
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+    def encode_state(self, observation):
+        maze = observation['full_grid']
+        encoded_maze = np.zeros((len(maze), len(maze[0])))
+        for y, row in enumerate(maze):
+            for x, tile in enumerate(row):
+                if tile == '#':
+                    encoded_maze[y][x] = 1
+                else:
+                    encoded_maze[y][x] = 0
+
+        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
+
+        for bomb in observation['bomb_zones']:
+            if observation['agent_zone'][1] == bomb[1] and  observation['agent_zone'][0] == bomb[0]:
+                encoded_maze[bomb[1]][bomb[0]] = 6
+            else : encoded_maze[bomb[1]][bomb[0]] = 4
+
+        for explosion in observation['explosion_zones']:
+            for tile in explosion:
+                if observation['agent_zone'][1] == tile[1] and  observation['agent_zone'][0] == tile[0]:
+                    encoded_maze[tile[1]][tile[0]] = 7
+                else : encoded_maze[tile[1]][tile[0]] = 5
+                
+        
+        for enemy in observation['enemy_zones']:
+            encoded_maze[enemy[1]][enemy[0]] = 3
+
+    
+        return tuple(encoded_maze.flatten())        
+
+
+
 import numpy as np
 class MonteCarloAgent:
     def __init__(self, data_to_init={}, num_actions=5, learning_rate=0.1, discount_factor=0.95, epsilon=0.1):
