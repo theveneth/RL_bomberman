@@ -20,6 +20,7 @@ def train(**args):
 
     AGENTS = [DQNAgent(), RandomAgent()]
     args['AGENTS'] = AGENTS
+    
     wrs = []
     episodes = []
     for episode in tqdm(range(num_episodes), desc="Episode"):
@@ -46,8 +47,8 @@ def train(**args):
 
         #MAJ AGENTS
         args['AGENTS'] = world.AGENTS
-        #print(list(world.AGENTS[0].policy_net.parameters()))
-        
+
+
     #plot the rewards
     for i, rewards in enumerate(agent_rewards):
         if i==0:
@@ -80,11 +81,6 @@ if __name__ == "__main__":
         'maze_size': (2, 2),
         'nb_bombs': [1, 0], #No bomb for the random agent 
         'type_agents': ['dqn', 'random'],
-        'bombing_range': 3,
-        'diag_bombing_range': 2,
-        'bomb_time': 3000,
-        'explosion_time': 1000,
-        'agent_move_time': 300,
     }
     train(**args)
 

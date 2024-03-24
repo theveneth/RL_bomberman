@@ -8,15 +8,11 @@ import numpy as np
 from copy import deepcopy
 class Bomberman():
 
-    def __init__(self, AGENTS = [RandomAgent()], display = True, maze_size = (3,5), nb_bombs = [1], type_agents = ["naive"], bombing_range = 3, diag_bombing_range = 2, bomb_time = 3000, explosion_time = 1000, agent_move_time = 300):
+    def __init__(self, AGENTS = [RandomAgent()], display = True, maze_size = (3,5), nb_bombs = [1], type_agents = ["naive"], bombing_range = 3, diag_bombing_range = 2):
         self.nb_agents = len(type_agents)
         self.nb_bombs = nb_bombs
         self.bombing_range = bombing_range
         self.diag_bombing_range = diag_bombing_range
-        self.bomb_time = bomb_time
-        self.explosion_time = explosion_time
-        self.agent_move_time = agent_move_time
-        self.explosion_time = explosion_time
         self.type_agents = type_agents
         self.display = display
         self.all_rewards = [[] for i in range(self.nb_agents)]
@@ -49,32 +45,27 @@ class Bomberman():
         
         data_agents = [{'agent_x': 1, 'agent_y': 1, 'alive' : True, 'bombs_available' : self.nb_bombs[i], 'type_agent' : ag, 'agent_id' : agents_id[i]} for i,ag in enumerate(self.type_agents)]
         
-        #INIT STATE BOMB DATA
-        #pour l'instant, ils auront une bombe chacun.
-        #data_bombs = [{'agent_id': i, 'bomb_time': None, 'bomb_x': None, 'bomb_y': None} for i in range(nb_agents)]
-
         #INIT STATE MAZE DATA
         size_x, size_y = maze_size
         real_maze_size = (5*size_x + 2, 3*size_y + 2)
         data_agents = self.init_pos_agents(data_agents, real_maze_size)
 
 
-        # maze_layout = [
-        #     ''.join(['#'] + ['    #']*size_x + ['#']),
-        #     ''.join(['#'] + ['  #  ']*size_x + ['#']),
-        #     ''.join(['#'] + ['#    ']*size_x + ['#']),
-        # ] * size_y
         maze_layout = [
-            ''.join(['#'] + ['     ']*size_x + ['#']),
-            ''.join(['#'] + ['     ']*size_x + ['#']),
-            ''.join(['#'] + ['     ']*size_x + ['#']),
+            ''.join(['#'] + ['    #']*size_x + ['#']),
+            ''.join(['#'] + ['  #  ']*size_x + ['#']),
+            ''.join(['#'] + ['#    ']*size_x + ['#']),
         ] * size_y
+
+        # maze_layout = [
+        #     ''.join(['#'] + ['     ']*size_x + ['#']),
+        #     ''.join(['#'] + ['     ']*size_x + ['#']),
+        #     ''.join(['#'] + ['     ']*size_x + ['#']),
+        # ] * size_y
         
         self.data_maze = [''.join(['#']* len(maze_layout[0]))] + maze_layout + [''.join(['#']* len(maze_layout[0]))]
         self.walls = self.get_brick_zones()
-        #INIT EXPLOSION DATA
-        #data_explosions = [{'agent_id' : None,'explosion_zone': [], 'explosion_time': None}]
-        
+          
         ####
         self.STATE = {'data_agents' : data_agents, 'data_bombs' : [], 'data_maze' : self.data_maze, 'data_explosions' : []}
         ####
@@ -91,12 +82,7 @@ class Bomberman():
             self.images['agents'] = agents_images
             self.images['bombs'] = bomb_images
         
-
-        ###########################
         #INIT AGENTS
-        ###########################
-        #let's take 4 agents for now
-        #print(AGENTS)
         self.AGENTS = AGENTS
 
             
@@ -191,7 +177,6 @@ class Bomberman():
     ##########BOMBS
         
     def drop_bomb(self, next_state, agent_id, x, y):
-        #print('agent_id', agent_id, ' dropped a bomb')
         new_bomb = {}
         new_bomb['agent_id'] = agent_id
 
@@ -203,13 +188,12 @@ class Bomberman():
 
         return next_state
 
-    def update_bombs(self, next_state, maze_layout, bomb_time):
-        #print("\nnombre bombs:   ",len(next_state["data_bombs"]))
+    def update_bombs(self, next_state, maze_layout):
         for bomb in next_state["data_bombs"]:
-            #print("\ntemps bombe : ", bomb['bomb_time'])
             bomb['bomb_time'] -= 1
             if bomb['bomb_time'] == 0:
                 next_state = self.make_bomb_explode(bomb, next_state, maze_layout)
+
                 #delete bomb
                 next_state["data_bombs"].remove(bomb)
 
@@ -240,6 +224,7 @@ class Bomberman():
         
     def make_bomb_explode(self, bomb, next_state, maze_layout):
         new_explosion = {}
+
         #put agent_id to reload bomb when explosion is done in update_explosion
         new_explosion['agent_id'] = bomb['agent_id']
         new_explosion['explosion_time'] = 5
@@ -251,7 +236,7 @@ class Bomberman():
 
         return next_state
         
-    def update_explosions(self, next_state, explosion_time):
+    def update_explosions(self, next_state):
         new_bombs_availables = []
         for explosion in next_state["data_explosions"]:
             explosion['explosion_time'] -= 1
@@ -283,9 +268,7 @@ class Bomberman():
                 if (agent['agent_x'], agent['agent_y']) in killing_zone:
                     killed_agents.append(agent['agent_id'])
                     next_state["data_agents"][i]['alive'] = False
-        #debug
-        # if killed_agents != []:
-        #     print('killed_agents : ', killed_agents)
+        
         return killed_agents, next_state
 
     def get_brick_zones(self):
@@ -297,10 +280,7 @@ class Bomberman():
             return brick_zones
 
     def is_action_possible(self, agent, action): 
-        #si il n'y a pas de wall, mob ou bombe là ou il veut aller 
-        #(dans un premier temps on peut considérer les mob/bomb comme transparent,
-        # et ajouter les blocages après)
-        #s'il veut poser une bombe, en a il déjà posé une ?
+
         x,y = agent["agent_x"],agent["agent_y"]
         if action == 0:
             x -= 1
@@ -316,8 +296,7 @@ class Bomberman():
             return True
         return (x,y) not in self.walls
         
-    def perform_actions(self, actions, display = True): 
-    
+    def perform_actions(self, actions): 
         # Store the rewards for each agent
         rewards = [0 for i in range(len(self.AGENTS))]
 
@@ -377,13 +356,10 @@ class Bomberman():
             
             closest_enemy_distance = past_obs['closest_enemy_distance']
             new_closest_enemy_distance = obs['closest_enemy_distance']
-            #print('new_closest_enemy_distance', new_closest_enemy_distance)
-            #max pour éviter qu'il ne tourne en rond
-            ##rewards[j] += max(10-new_closest_enemy_distance,0)*100
+
             #éviter qu'il ne s'eloigne
             rewards[j] += (closest_enemy_distance-new_closest_enemy_distance)*20
 
-            #print('rewards', max(10-new_closest_enemy_distance,0)*100)
             new_closest_bomb_distance = obs['closest_bomb_distance']
             closest_bomb_distance = past_obs['closest_bomb_distance']
             if closest_bomb_distance<=5 and dropped_bomb[j]==False:
@@ -403,10 +379,10 @@ class Bomberman():
 
 
         #update the bombs -> explode & delete bomb if needed
-        next_state = self.update_bombs(next_state = next_state, maze_layout=self.data_maze,bomb_time=self.bomb_time)
+        next_state = self.update_bombs(next_state = next_state, maze_layout=self.data_maze)
                         
         #check if a bomb has exploded and update the state
-        next_state = self.update_explosions(next_state = next_state, explosion_time=self.explosion_time)
+        next_state = self.update_explosions(next_state = next_state)
 
         #check if an agent has been killed and update the state, give a reward to the killer
         for explosion in deepcopy(next_state["data_explosions"]):
@@ -417,8 +393,6 @@ class Bomberman():
             rewards_id = {"blue":0,"green":1,"pink":2,"yellow":3}
             reward_id = rewards_id[agent_dropper]
             if agent_dropper not in killed_agents and len(killed_agents)>0:
-                #print('killed_agents', killed_agents)
-                #rewards[reward_id] += 1000 * len(killed_agents)
                 pass
 
         #check if the game is over
@@ -438,14 +412,12 @@ class Bomberman():
                 pass
             else: 
                 pass
-                #rewards[i]-=50
            
         self.t += 1
 
         if self.t >=300:
             for i, agent in enumerate(next_state['data_agents']):
                 rewards[i]-=100
-            #print('too long')
             next_state['data_agents'][0]['alive'] = False
             done = True
 
@@ -462,8 +434,10 @@ class Bomberman():
                 poss_actions[j]+=1
         #AGENT POSITION AND SELF AWARNESS
         agent_x, agent_y = agent['agent_x'], agent['agent_y']
+
         grid_size = 3  #local grid size (e.g., 5x5, 7x7, etc.)
         half_grid_size = grid_size // 2
+
         # Local grid
         local_grid = [[' ' for _ in range(grid_size)] for _ in range(grid_size)]
         for dx in range(-half_grid_size, half_grid_size + 1):
@@ -521,7 +495,6 @@ class Bomberman():
             'bombs_available': agent['bombs_available'],
             'closest_explosion_distance': closest_explosion_distance,
             'possible_actions' : poss_actions
-            #'time' : self.t,
         }
 
 
@@ -565,8 +538,8 @@ class Bomberman():
                 actions.append(action)
 
             # Execute the actions of all agents and update the environment
-            rewards, next_state, done = self.perform_actions(actions, self.display)
-            #print(rewards)
+            rewards, next_state, done = self.perform_actions(actions)
+
             # Update the policy of each agent based on the transition
             for i, agent in enumerate(self.AGENTS):
                 self.all_rewards[i].append(rewards[i])
@@ -581,10 +554,8 @@ class Bomberman():
 
             #check if the game is over
             if done:
-                #print(rewards)
                 self.winner = self.get_winner()
                 self.running = False
-                #print(actions_agent)
         
 
                    

@@ -16,11 +16,6 @@ args = {
         'maze_size': (2, 2),
         'nb_bombs': [1, 0], #No bomb for the random agent 
         'type_agents': ['dqn', 'random'],
-        'bombing_range': 3,
-        'diag_bombing_range': 2,
-        'bomb_time': 3000,
-        'explosion_time': 1000,
-        'agent_move_time': 300,
         'AGENTS' : agents_
     }
 
