@@ -1,18 +1,33 @@
-from world import Bomberman
-args ={'nb_agents': 4, 
-       'maze_size' : (3,5), 
-       'bombs_available' : 1, 
-       'type_agent' : 'naive', 
-       'bombing_range' : 3, 
-       'diag_bombing_range' : 2, 
-       'bomb_time' : 3000, 
-       'explosion_time' : 1000, 
-       'agent_move_time' : 300}
+from new_world import Bomberman
+import pickle
+from agents import QLearningAgent, RandomAgent, DQNAgent
+
+
+#open pickle
+with open('pickles/qtable_DQN_2000_episodes.pkl', 'rb') as f:
+    data = pickle.load(f)
+
+agents_ = [DQNAgent(init_data_agents = data), RandomAgent()]
+#agents_ = [QLearningAgent(data_to_init = data), RandomAgent()]
+
+
+args = {
+        'display' : False,
+        'maze_size': (2, 2),
+        'nb_bombs': [1, 0], #No bomb for the random agent 
+        'type_agents': ['dqn', 'random'],
+        'bombing_range': 3,
+        'diag_bombing_range': 2,
+        'bomb_time': 3000,
+        'explosion_time': 1000,
+        'agent_move_time': 300,
+        'AGENTS' : agents_
+    }
 
 
 def main(**args):
     world = Bomberman(**args)
-    world.run()
-
+    _, rewards, _ = world.run()
+    print('FINAL REWARD : ', rewards[0][-1])
 if __name__ == "__main__":
     main(**args)
