@@ -4,31 +4,45 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import pandas as pd
-from agents import QLearningAgent, RandomAgent, DQNAgent
+from agents import QLearningAgent, RandomAgent, DQNAgent, DQNAgent2
 
                     
 def train(**args):
-    num_episodes = 1000# Number of episodes to train for
+    num_episodes = 600# Number of episodes to train for
     save_qtable = True  # Whether to save the Q-table after training
+    data_to_save = None
+    to_check = []
 
     # List to store the rewards of each agent for tracking performance
     agent_rewards = [[] for _ in range(len(args['type_agents']))]
+    last_agent_rewards = [[] for _ in range(len(args['type_agents']))]
     winners = []
 
     AGENTS = [DQNAgent(), RandomAgent()]
     args['AGENTS'] = AGENTS
-    
+    wrs = []
+    episodes = []
     for episode in tqdm(range(num_episodes), desc="Episode"):
         world = Bomberman(**args)
+        #to_check.append(len(world.AGENTS[0].q_table.keys()))
+
         winner, rewards, data_to_save = world.run()
         winners.append(winner)
         if len(winners)>20 and winners[-15:] == ["blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue", "blue"]:
-            print('10 consecutive draws, stopping training')
-            break
+            print('15 wins in a row')
+        
+        if episode%20==19 and episode >=99:
+            perc1 = winners[-100:].count("blue")
+            perc2 = winners[-100:].count("green")
+            print("\nwr: ",perc1,"%")
+            print("\nlr: ",perc2,"%")
+            wrs.append(perc1)
+            episodes.append(episode+1)
 
         # Store the rewards of each agent for this episode
         for i, rewards_i in enumerate(rewards):
-            agent_rewards[i].append(np.mean(rewards_i))
+            agent_rewards[i].append(np.sum(rewards_i))
+            last_agent_rewards[i].append(rewards_i[-1])
 
         #MAJ AGENTS
         args['AGENTS'] = world.AGENTS
@@ -38,15 +52,15 @@ def train(**args):
     for i, rewards in enumerate(agent_rewards):
         if i==0:
             rewards_series = pd.Series(rewards)
-            moving_avg = rewards_series.rolling(window=100).mean()
+            moving_avg = rewards_series.rolling(window=50).mean()
             plt.plot(moving_avg, label=args['type_agents'][i])
+            plt.show()
+            plt.plot(last_agent_rewards[i],label = args['type_agents'][i])
+            plt.show()
         #add legend 
-        
-    plt.xlabel("Episode")
-    plt.ylabel("Total Reward")
-    plt.title("Total Reward vs Episode for each agent")
-    plt.legend()
-    plt.show()
+    print("wrs: ",wrs)
+    plt.plot(episodes, wrs)
+    plt.show()    
 
     # Save the Q-table of the QLearningAgent after training
     print(f"Winners: {winners[-20:]}")
@@ -54,10 +68,12 @@ def train(**args):
     if save_qtable :
         for data in data_to_save :
             if data is not None :
-                with open(f"./pickles/qtable_DQN_{num_episodes}_episodes.pkl", "wb") as f: #for qlearning only for now
+                path = f"qtable_DQN_{num_episodes}_episodes.pkl"
+                with open(f"./pickles/{path}", "wb") as f: #for qlearning only for now
                     pickle.dump(data, f)
-                    print('saved in : ', f'qtable_DQN_{num_episodes}_episodes.pkl')
+                    print('saved in : ', f'qtable_DQN_{path}_episodes.pkl')
 
+    print(to_check)
 if __name__ == "__main__":
     args = {
         'display' : False,
@@ -74,4 +90,4 @@ if __name__ == "__main__":
 
     print('Training finished')
 
-    
+

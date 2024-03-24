@@ -35,7 +35,7 @@ class RandomAgent:
 
        
     def act(self, obs):
-        action = np.random.randint(0, self.num_actions)
+        #action = np.random.randint(0, self.num_actions)
         action = 5
         return action
 
@@ -44,7 +44,7 @@ class RandomAgent:
 
 
 class QLearningAgent:
-    def __init__(self, data_to_init = {}, num_actions=6, learning_rate=0.1, discount_factor=0.95, epsilon=0.1):
+    def __init__(self, data_to_init = {}, num_actions=6, learning_rate=0.11, discount_factor=0.95, epsilon=0.1):
         self.num_actions = num_actions
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
@@ -55,6 +55,7 @@ class QLearningAgent:
 
     def init_q_table(self, encoded_obs):
         # Initialize Q-table with zeros
+        #print('new state ! ')
         self.q_table[encoded_obs] = np.random.rand(self.num_actions)
 
     def act(self, obs):
@@ -80,6 +81,7 @@ class QLearningAgent:
         
         if done:
             td_target = reward
+            #print('at the end, q table has ', len(self.q_table.keys()), ' knwon states')
         else:
             td_target = reward + self.discount_factor * np.max(self.q_table[encoded_next_obs])
 
@@ -97,25 +99,21 @@ class QLearningAgent:
                 else:
                     encoded_maze[y][x] = 0
 
-        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
 
         for bomb in observation['bomb_zones']:
-            if observation['agent_zone'][1] == bomb[1] and  observation['agent_zone'][0] == bomb[0]:
-                encoded_maze[bomb[1]][bomb[0]] = 6
-            else : encoded_maze[bomb[1]][bomb[0]] = 4
+            encoded_maze[bomb[1]][bomb[0]] = 4
 
         for explosion in observation['explosion_zones']:
             for tile in explosion:
-                if observation['agent_zone'][1] == tile[1] and  observation['agent_zone'][0] == tile[0]:
-                    encoded_maze[tile[1]][tile[0]] = 7
-                else : encoded_maze[tile[1]][tile[0]] = 5
+                encoded_maze[tile[1]][tile[0]] = 5
                 
-        
         for enemy in observation['enemy_zones']:
             encoded_maze[enemy[1]][enemy[0]] = 3
 
-    
-        return tuple(encoded_maze.flatten())
+        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
+
+        #print(encoded_maze)
+        return tuple(list(encoded_maze.flatten()))  
     
 
 import torch
@@ -123,8 +121,132 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
 
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+from torch.distributions import Categorical
+
+import torch.nn as nn
+from torch.distributions import Categorical
+import torch.optim as optim
+
+import torch.nn as nn
+from torch.distributions import Categorical
+import torch.optim as optim
+from torch.nn import functional as F
+
+
+class DQNAgent2:
+  def __init__(self, init_data_agents=None, num_actions=6, learning_rate=0.005, gamma=0.1, epsilon=0.05):
+    self.num_actions = num_actions
+    self.learning_rate = learning_rate
+    self.gamma = gamma
+    self.epsilon = epsilon
+    self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    if init_data_agents is not None:
+      self.policy_net = init_data_agents
+      print('check')
+    else:
+      self.policy_net = MazeRNN()
+      print("DEVICE : ", self.device)
+
+    self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
+    self.policy_net.to(self.device)
+
+  def act(self, obs):
+    # Encode observation and convert to tensor
+    encoded_obs = self.encode_state(obs)
+    encoded_obs = torch.tensor(encoded_obs, dtype=torch.float32).unsqueeze(0).to(self.device)
+
+    # Generate a random number
+    rand_num = np.random.rand()
+
+    if rand_num < self.epsilon:
+        # Randomly select action
+        action = np.random.randint(0, self.num_actions)
+    else:
+        # Pass encoded observation through the policy network (MazeRNN)
+        with torch.no_grad():
+            lstm_out = self.policy_net(encoded_obs)
+            action_probs = torch.softmax(lstm_out.squeeze(0), dim=0)
+
+        # Sample an action from the action probabilities
+        action = torch.multinomial(action_probs, 1).item()
+
+    return action
+  
+  def update_policy(self, obs, action, reward, next_obs, done):
+    scaled_reward = (reward + 100) / (1000 + 100)
+
+    # Encode states
+    encoded_obs = self.encode_state(obs)
+    encoded_next_obs = self.encode_state(next_obs)
+
+    # Convert encoded observations to tensors
+    state = torch.tensor(encoded_obs, dtype=torch.float32).unsqueeze(0).to(self.device)
+    next_state = torch.tensor(encoded_next_obs, dtype=torch.float32).unsqueeze(0).to(self.device)
+
+    # Get LSTM output for obs and next_obs
+    lstm_out = self.policy_net(state)
+    lstm_out_next = self.policy_net(next_state)
+
+    # Apply softmax for action probabilities
+    action_probs = torch.softmax(lstm_out.squeeze(0), dim=0)
+    next_action_probs = torch.softmax(lstm_out_next.squeeze(0), dim=0)
+
+    # Create Categorical distribution for action selection
+    dist = Categorical(logits=action_probs)
+
+    # Calculate log probability of selected action
+    action_tensor = torch.tensor([action], dtype=torch.long).to(self.device)
+    log_prob = dist.log_prob(action_tensor)
+
+    # Target calculation using max instead of argmax for stability
+    target = scaled_reward + (1 - done) * self.gamma * torch.max(next_action_probs).item()
+
+    # Calculate loss and update policy network
+    loss = -(target - action_probs[action]).item() * log_prob
+    self.optimizer.zero_grad()
+    loss.backward()
+    self.optimizer.step()
+
+    
+  def encode_state(self, observation):
+    maze = observation['full_grid']
+    poss_actions = observation['possible_actions']
+    encoded_maze = np.zeros((len(maze), len(maze[0])))
+    for y, row in enumerate(maze):
+        for x, tile in enumerate(row):
+            if tile == '#':
+                encoded_maze[y][x] = 1
+            else:
+                encoded_maze[y][x] = 0
+
+
+    for bomb in observation['bomb_zones']:
+        if bomb[1]==observation['agent_zone'][1] and bomb[0]==observation['agent_zone'][0]:
+            encoded_maze[bomb[1]][bomb[0]] = 6
+        else: 
+            encoded_maze[bomb[1]][bomb[0]] = 4
+
+    for explosion in observation['explosion_zones']:
+        for tile in explosion:
+            encoded_maze[tile[1]][tile[0]] = 5
+            
+    for enemy in observation['enemy_zones']:
+        encoded_maze[enemy[1]][enemy[0]] = 3
+
+    encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
+
+    #print(encoded_maze)
+    return tuple(list(encoded_maze.flatten())+poss_actions)    
+
+
+
 class DQNAgent:
-    def __init__(self, init_data_agents = None, num_actions=6, learning_rate=0.001, gamma=0.95, epsilon=0.1):
+    def __init__(self, init_data_agents = None, num_actions=6, learning_rate=0.005, gamma=0.1, epsilon=0.05):
         self.num_actions = num_actions
         self.learning_rate = learning_rate
         self.gamma = gamma
@@ -142,29 +264,36 @@ class DQNAgent:
         self.policy_net.to(self.device)
 
     def create_policy_net(self):
-
         return nn.Sequential(
-            nn.Linear(96, 64),
+            nn.Linear(102, 96),  
+            nn.ReLU(),  
+            nn.Linear(96, 64),  
             nn.ReLU(),
-            nn.Linear(64, self.num_actions)
+            nn.Linear(64, 64),  
+            nn.ReLU(),
+            nn.Linear(64, 32),  
+            nn.ReLU(),
+            nn.Linear(32, self.num_actions)
         )
 
     def act(self, obs):
         encoded_obs = self.encode_state(obs)
         state = torch.tensor(encoded_obs, dtype=torch.float32).unsqueeze(0).to(self.device)
-
-        # ε-greedy exploration
-        if np.random.rand() < self.epsilon:
-            # Explore: choose a random action
-            action = np.random.randint(self.num_actions)
+        rand_num = np.random.rand()
+        #print(rand_num)
+        if rand_num < self.epsilon:
+            #print("oui")
+            action = np.random.randint(0, self.num_actions)
         else:
-            # Exploit: choose the action with the highest Q-value
             with torch.no_grad():
                 action_probs = self.policy_net(state)
             action = torch.argmax(action_probs).item()
+        #print(action)
         return action
 
     def update_policy(self, obs, action, reward, next_obs, done):
+        scaled_reward = (reward + 100) / (1000 + 100)
+
         encoded_obs = self.encode_state(obs)
         encoded_next_obs = self.encode_state(next_obs)
 
@@ -174,15 +303,13 @@ class DQNAgent:
         action_probs = self.policy_net(state)
         dist = Categorical(logits=action_probs)
 
-            
-        # Convert action to a tensor
         action_tensor = torch.tensor([action], dtype=torch.long).to(self.device)
         log_prob = dist.log_prob(action_tensor)
 
-
         next_action_probs = self.policy_net(next_state)
-        next_action = torch.argmax(next_action_probs, dim=1)
-        target = reward + (1 - done) * self.gamma * next_action_probs[0, next_action]
+        next_action = torch.argmax(next_action_probs).item()
+
+        target = scaled_reward + (1 - done) * self.gamma * next_action_probs[0, next_action]
 
         loss = -(target - action_probs[0, action]).item() * log_prob
         self.optimizer.zero_grad()
@@ -191,6 +318,7 @@ class DQNAgent:
 
     def encode_state(self, observation):
         maze = observation['full_grid']
+        poss_actions = observation['possible_actions']
         encoded_maze = np.zeros((len(maze), len(maze[0])))
         for y, row in enumerate(maze):
             for x, tile in enumerate(row):
@@ -199,10 +327,12 @@ class DQNAgent:
                 else:
                     encoded_maze[y][x] = 0
 
-        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
 
         for bomb in observation['bomb_zones']:
-            encoded_maze[bomb[1]][bomb[0]] = 4
+            if bomb[1]==observation['agent_zone'][1] and bomb[0]==observation['agent_zone'][0]:
+                encoded_maze[bomb[1]][bomb[0]] = 6
+            else: 
+                encoded_maze[bomb[1]][bomb[0]] = 4
 
         for explosion in observation['explosion_zones']:
             for tile in explosion:
@@ -211,9 +341,10 @@ class DQNAgent:
         for enemy in observation['enemy_zones']:
             encoded_maze[enemy[1]][enemy[0]] = 3
 
-        
-        return tuple(list(encoded_maze.flatten()))        
+        encoded_maze[observation['agent_zone'][1]][observation['agent_zone'][0]] = 2
 
+        #print(encoded_maze)
+        return tuple(list(encoded_maze.flatten())+poss_actions)        
 
 
 import numpy as np
