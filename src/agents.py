@@ -98,7 +98,6 @@ class DQNAgent:
 
         if init_data_agents is not None:
             self.policy_net = init_data_agents
-            print('check')
         else:
             self.policy_net = self.create_policy_net()
             print("DEVICE : ", self.device)

@@ -2,7 +2,7 @@ import pygame
 import os
 import random
 import time
-from agents import NaiveAgent, QLearningAgent, RandomAgent, MonteCarloAgent, NNAgent, DQNAgent
+from agents import QLearningAgent, RandomAgent, MonteCarloAgent, DQNAgent
 from utils import load_image
 import numpy as np
 from copy import deepcopy
@@ -295,8 +295,9 @@ class Bomberman():
         elif action == 5:
             return True
         return (x,y) not in self.walls
-        
-    def perform_actions(self, actions): 
+    
+    def perform_actions(self, actions, display = True): 
+    
         # Store the rewards for each agent
         rewards = [0 for i in range(len(self.AGENTS))]
 
@@ -356,10 +357,13 @@ class Bomberman():
             
             closest_enemy_distance = past_obs['closest_enemy_distance']
             new_closest_enemy_distance = obs['closest_enemy_distance']
-
+            #print('new_closest_enemy_distance', new_closest_enemy_distance)
+            #max pour éviter qu'il ne tourne en rond
+            ##rewards[j] += max(10-new_closest_enemy_distance,0)*100
             #éviter qu'il ne s'eloigne
             rewards[j] += (closest_enemy_distance-new_closest_enemy_distance)*20
 
+            #print('rewards', max(10-new_closest_enemy_distance,0)*100)
             new_closest_bomb_distance = obs['closest_bomb_distance']
             closest_bomb_distance = past_obs['closest_bomb_distance']
             if closest_bomb_distance<=5 and dropped_bomb[j]==False:
@@ -393,6 +397,8 @@ class Bomberman():
             rewards_id = {"blue":0,"green":1,"pink":2,"yellow":3}
             reward_id = rewards_id[agent_dropper]
             if agent_dropper not in killed_agents and len(killed_agents)>0:
+                #print('killed_agents', killed_agents)
+                #rewards[reward_id] += 1000 * len(killed_agents)
                 pass
 
         #check if the game is over
@@ -412,12 +418,14 @@ class Bomberman():
                 pass
             else: 
                 pass
+                #rewards[i]-=50
            
         self.t += 1
 
         if self.t >=300:
             for i, agent in enumerate(next_state['data_agents']):
                 rewards[i]-=100
+            #print('too long')
             next_state['data_agents'][0]['alive'] = False
             done = True
 
@@ -434,10 +442,8 @@ class Bomberman():
                 poss_actions[j]+=1
         #AGENT POSITION AND SELF AWARNESS
         agent_x, agent_y = agent['agent_x'], agent['agent_y']
-
         grid_size = 3  #local grid size (e.g., 5x5, 7x7, etc.)
         half_grid_size = grid_size // 2
-
         # Local grid
         local_grid = [[' ' for _ in range(grid_size)] for _ in range(grid_size)]
         for dx in range(-half_grid_size, half_grid_size + 1):
@@ -495,11 +501,12 @@ class Bomberman():
             'bombs_available': agent['bombs_available'],
             'closest_explosion_distance': closest_explosion_distance,
             'possible_actions' : poss_actions
+            #'time' : self.t,
         }
 
 
         return observation
-
+    
     def get_winner(self):
         alive_agents = [agent['alive'] for agent in self.STATE['data_agents']]
         if sum(alive_agents) == 1:
@@ -518,7 +525,7 @@ class Bomberman():
                 self.screen.fill((0, 0, 0))  # Fill screen with black color
                 self.display_all()
                 pygame.display.flip()
-                time.sleep(0.5)
+                time.sleep(0.1)
 
 
             # Store the actions taken by all agents
@@ -563,8 +570,6 @@ class Bomberman():
         for agent in self.AGENTS:
             if isinstance(agent, (QLearningAgent,MonteCarloAgent)): #only qlearning for now
                 data_to_save.append(agent.q_table)
-            elif isinstance(agent, (NNAgent)):
-                data_to_save.append(agent.model)
             elif isinstance(agent, (DQNAgent)):
                 data_to_save.append(agent.policy_net)
             else: 
