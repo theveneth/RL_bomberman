@@ -5,6 +5,7 @@ from agents import QLearningAgent, RandomAgent, DQNAgent
 
 #open pickle
 pickle_path = 'pickles/qtable_qlearning_5000_episodes.pkl'
+
 #check if pickle exists
 try:
     with open(pickle_path, 'rb') as f:
